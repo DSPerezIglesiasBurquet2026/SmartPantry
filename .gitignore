@@ -11,10 +11,6 @@
 *.sln.docstates
 *.env
 
-#Organizacion
-* @DSPerezIglesiasBurquet2026/reviewers
-
-
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
