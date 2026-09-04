@@ -45,13 +45,13 @@ Si en algún momento se usa un servidor remoto o una cadena con usuario/contrase
 2. Restaurar y compilar el backend: abrir `SmartPantry.slnx` en Visual Studio y compilar, o `dotnet restore ./SmartPantry.slnx` + `dotnet build ./SmartPantry.slnx`
 3. Ejecutar `SmartPantry.DbMigrator` para crear la base y los datos iniciales (F5 en VS, o `dotnet run --project ./src/SmartPantry.DbMigrator`)
 4. Levantar la API: `dotnet run --project ./src/SmartPantry.HttpApi.Host`
-5. Levantar el frontend:
+5. Levantar el frontend (ejecutar en otra terminal):
    ```
    cd angular
    yarn start
    ```
 6. URLs locales:
-   - Para la API: `https://localhost:44373`
+   - Para la API: `https://localhost:44352`
    - Para Angular: `http://localhost:4200`
 
 ### Verificación
@@ -63,8 +63,9 @@ Si en algún momento se usa un servidor remoto o una cadena con usuario/contrase
   ```
 - Frontend:
   ```
+  cd angular
   yarn build
-  yarn test --watch=false --browsers=ChromeHeadless
+  yarn test --watch=false
   ```
 
 ### Estructura de la solución

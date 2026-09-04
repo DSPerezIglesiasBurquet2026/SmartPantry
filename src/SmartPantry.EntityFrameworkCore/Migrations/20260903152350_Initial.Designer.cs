@@ -13,7 +13,7 @@ using Volo.Abp.EntityFrameworkCore;
 namespace SmartPantry.Migrations
 {
     [DbContext(typeof(SmartPantryDbContext))]
-    [Migration("20260902224859_Initial")]
+    [Migration("20260903152350_Initial")]
     partial class Initial
     {
         /// <inheritdoc />

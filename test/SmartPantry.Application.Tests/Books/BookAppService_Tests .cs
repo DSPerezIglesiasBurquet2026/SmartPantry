@@ -6,6 +6,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Modularity;
 using Volo.Abp.Validation;
 using Xunit;
+using SmartPantry.Authors; // NUEVO: Importar el namespace de Autores
 
 namespace SmartPantry.Books;
 
@@ -13,10 +14,12 @@ public abstract class BookAppService_Tests<TStartupModule> : SmartPantryApplicat
     where TStartupModule : IAbpModule
 {
     private readonly IBookAppService _bookAppService;
+    private readonly IAuthorAppService _authorAppService; // NUEVO: Declarar el servicio de autores
 
     protected BookAppService_Tests()
     {
         _bookAppService = GetRequiredService<IBookAppService>();
+        _authorAppService = GetRequiredService<IAuthorAppService>(); // NUEVO: Inyectar el servicio
     }
 
     [Fact]
@@ -35,6 +38,11 @@ public abstract class BookAppService_Tests<TStartupModule> : SmartPantryApplicat
     [Fact]
     public async Task Should_Create_A_Valid_Book()
     {
+        // NUEVO: Obtener la lista de autores de la base de datos de prueba
+        // (Nota: Si tu DTO de consulta de autores se llama distinto, cambia GetAuthorListDto() por PagedAndSortedResultRequestDto())
+        var authors = await _authorAppService.GetListAsync(new PagedAndSortedResultRequestDto());
+        var firstAuthor = authors.Items.First(); // Tomar el primer autor disponible
+
         //Act
         var result = await _bookAppService.CreateAsync(
             new CreateUpdateBookDto
@@ -42,7 +50,8 @@ public abstract class BookAppService_Tests<TStartupModule> : SmartPantryApplicat
                 Name = "New test book 42",
                 Price = 10,
                 PublishDate = DateTime.Now,
-                Type = BookType.ScienceFiction
+                Type = BookType.ScienceFiction,
+                AuthorId = firstAuthor.Id // NUEVO: Asignar el ID del autor
             }
         );
 
@@ -50,10 +59,15 @@ public abstract class BookAppService_Tests<TStartupModule> : SmartPantryApplicat
         result.Id.ShouldNotBe(Guid.Empty);
         result.Name.ShouldBe("New test book 42");
     }
-    
+
     [Fact]
     public async Task Should_Not_Create_A_Book_Without_Name()
     {
+        // NUEVO: También agregamos el AuthorId aquí para asegurar que la prueba falle 
+        // estrictamente por la falta del 'Name' y no por la falta de 'AuthorId'
+        var authors = await _authorAppService.GetListAsync(new PagedAndSortedResultRequestDto());
+        var firstAuthor = authors.Items.First();
+
         var exception = await Assert.ThrowsAsync<AbpValidationException>(async () =>
         {
             await _bookAppService.CreateAsync(
@@ -62,7 +76,8 @@ public abstract class BookAppService_Tests<TStartupModule> : SmartPantryApplicat
                     Name = "",
                     Price = 10,
                     PublishDate = DateTime.Now,
-                    Type = BookType.ScienceFiction
+                    Type = BookType.ScienceFiction,
+                    AuthorId = firstAuthor.Id // NUEVO: Asignar el ID del autor
                 }
             );
         });
