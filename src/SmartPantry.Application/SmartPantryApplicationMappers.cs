@@ -15,11 +15,21 @@ public partial class SmartPantryBookToBookDtoMapper : MapperBase<Book, BookDto>
     public override partial void Map(Book source, BookDto destination);
 }
 
-[Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
+[Mapper]
 public partial class SmartPantryCreateUpdateBookDtoToBookMapper : MapperBase<CreateUpdateBookDto, Book>
 {
+    [MapperIgnoreTarget(nameof(Book.LastModificationTime))]
+    [MapperIgnoreTarget(nameof(Book.LastModifierId))]
+    [MapperIgnoreTarget(nameof(Book.CreationTime))]
+    [MapperIgnoreTarget(nameof(Book.CreatorId))]
+    [MapperIgnoreTarget(nameof(Book.ConcurrencyStamp))]
     public override partial Book Map(CreateUpdateBookDto source);
 
+    [MapperIgnoreTarget(nameof(Book.LastModificationTime))]
+    [MapperIgnoreTarget(nameof(Book.LastModifierId))]
+    [MapperIgnoreTarget(nameof(Book.CreationTime))]
+    [MapperIgnoreTarget(nameof(Book.CreatorId))]
+    [MapperIgnoreTarget(nameof(Book.ConcurrencyStamp))]
     public override partial void Map(CreateUpdateBookDto source, Book destination);
 }
 
@@ -31,11 +41,27 @@ public partial class SmartPantryAuthorToAuthorDtoMapper : MapperBase<Author, Aut
     public override partial void Map(Author source, AuthorDto destination);
 }
 
-[Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
+[Mapper]
 public partial class SmartPantryCreateUpdateAuthorDtoToAuthorMapper : MapperBase<CreateUpdateAuthorDto, Author>
 {
+    [MapperIgnoreTarget(nameof(Author.IsDeleted))]
+    [MapperIgnoreTarget(nameof(Author.DeleterId))]
+    [MapperIgnoreTarget(nameof(Author.DeletionTime))]
+    [MapperIgnoreTarget(nameof(Author.LastModificationTime))]
+    [MapperIgnoreTarget(nameof(Author.LastModifierId))]
+    [MapperIgnoreTarget(nameof(Author.CreationTime))]
+    [MapperIgnoreTarget(nameof(Author.CreatorId))]
+    [MapperIgnoreTarget(nameof(Author.ConcurrencyStamp))]
     public override partial Author Map(CreateUpdateAuthorDto source);
 
+    [MapperIgnoreTarget(nameof(Author.IsDeleted))]
+    [MapperIgnoreTarget(nameof(Author.DeleterId))]
+    [MapperIgnoreTarget(nameof(Author.DeletionTime))]
+    [MapperIgnoreTarget(nameof(Author.LastModificationTime))]
+    [MapperIgnoreTarget(nameof(Author.LastModifierId))]
+    [MapperIgnoreTarget(nameof(Author.CreationTime))]
+    [MapperIgnoreTarget(nameof(Author.CreatorId))]
+    [MapperIgnoreTarget(nameof(Author.ConcurrencyStamp))]
     public override partial void Map(CreateUpdateAuthorDto source, Author destination);
 }
 
