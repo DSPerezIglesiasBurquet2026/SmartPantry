@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
+using SmartPantry;
 namespace SmartPantry.Productos;
 
 public class CreateProductoDto

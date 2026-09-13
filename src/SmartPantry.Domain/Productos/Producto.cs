@@ -1,6 +1,7 @@
 using System;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
+using SmartPantry;
 
 namespace SmartPantry.Productos;
 
