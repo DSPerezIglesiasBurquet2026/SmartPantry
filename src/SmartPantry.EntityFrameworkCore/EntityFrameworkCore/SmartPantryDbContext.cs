@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using SmartPantry.Authors;
 using SmartPantry.Books;
+using SmartPantry.Productos; 
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.BlobStoring.Database.EntityFrameworkCore;
 using Volo.Abp.Data;
@@ -28,6 +29,9 @@ public class SmartPantryDbContext :
     public DbSet<Author> Authors { get; set; }
 
     public DbSet<Book> Books { get; set; }
+
+    
+    public DbSet<Producto> Productos { get; set; }
 
     #region Entities from the modules
 
@@ -95,11 +99,19 @@ public class SmartPantryDbContext :
 
         /* Configure your own tables/entities inside here */
 
-        //builder.Entity<YourEntity>(b =>
-        //{
-        //    b.ToTable(SmartPantryConsts.DbTablePrefix + "YourEntities", SmartPantryConsts.DbSchema);
-        //    b.ConfigureByConvention(); //auto configure for the base class props
-        //    //...
-        //});
+        // 👈 Mapeo de la entidad Producto para TP05 / RF-08
+        builder.Entity<Producto>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "Productos", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention(); // Configura auditorías e Id base de ABP
+
+            // Mapeo de restricciones con las constantes del dominio
+            b.Property(x => x.CodigoBarras).IsRequired().HasMaxLength(ProductoConsts.MaxCodigoBarrasLength);
+            b.Property(x => x.Nombre).IsRequired().HasMaxLength(ProductoConsts.MaxNombreLength);
+            b.Property(x => x.Marca).IsRequired().HasMaxLength(ProductoConsts.MaxMarcaLength);
+
+            // Regla de negocio: El código de barras no se duplica en el sistema
+            b.HasIndex(x => x.CodigoBarras).IsUnique();
+        });
     }
 }
