@@ -2,6 +2,7 @@ using Riok.Mapperly.Abstractions;
 using Volo.Abp.Mapperly;
 using SmartPantry.Authors;
 using SmartPantry.Books;
+using SmartPantry.Productos;
 
 namespace SmartPantry;
 
@@ -71,4 +72,13 @@ public partial class SmartPantryAuthorToAuthorExcelDtoMapper : MapperBase<Author
     public override partial AuthorExcelDto Map(Author source);
 
     public override partial void Map(Author source, AuthorExcelDto destination);
+}
+
+// Mapeo registrado para TP05 / RF-08
+[Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
+public partial class SmartPantryProductoToProductoDtoMapper : MapperBase<Producto, ProductoDto>
+{
+    public override partial ProductoDto Map(Producto source);
+
+    public override partial void Map(Producto source, ProductoDto destination);
 }
