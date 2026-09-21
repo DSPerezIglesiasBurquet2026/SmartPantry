@@ -41,10 +41,20 @@ Si en algún momento se usa un servidor remoto o una cadena con usuario/contrase
 
 ### Puesta en marcha
 
-1. Restaurar las dependencias cliente: `abp install-libs` (si falla desde ABP Studio, correr `yarn install` manualmente dentro de `/angular`, ya que a nosotros nos falló)
-2. Restaurar y compilar el backend: abrir `SmartPantry.slnx` en Visual Studio y compilar, o `dotnet restore ./SmartPantry.slnx` + `dotnet build ./SmartPantry.slnx`
-3. Ejecutar `SmartPantry.DbMigrator` para crear la base y los datos iniciales (F5 en VS, o `dotnet run --project ./src/SmartPantry.DbMigrator`)
-4. Levantar la API: `dotnet run --project ./src/SmartPantry.HttpApi.Host`
+1. Restaurar las dependencias cliente: ``` abp install-libs ``` (si falla desde ABP Studio, correr ``` yarn install ``` manualmente dentro de `/angular`, ya que a nosotros nos falló)
+2. Restaurar y compilar el backend: abrir `SmartPantry.slnx` en Visual Studio y compilar. O ejecutar: 
+    ```
+    dotnet restore ./SmartPantry.slnx` + `dotnet build ./SmartPantry.slnx
+    ```
+3. Ejecutar `SmartPantry.DbMigrator` para crear la base y los datos iniciales. O ejecutar:
+    ```
+    dotnet run --project ./src/SmartPantry.DbMigrator
+    ```
+4. Levantar la API:
+    ```
+    dotnet run --project ./src/SmartPantry.HttpApi.Host
+    ```
+
 5. Levantar el frontend (ejecutar en otra terminal):
    ```
    cd angular
