@@ -1,29 +1,27 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 
 namespace SmartPantry.Productos;
 
-/// <summary>
-/// Servicio de Aplicación manual para la gestión de Productos (RF-08)[cite: 1, 2].
-/// Hereda de SmartPantryAppService e implementa IProductoAppService.
-/// </summary>
-[AllowAnonymous] // Acceso temporal anónimo para probar en Swagger sin autenticación
+[AllowAnonymous]
 public class ProductoAppService : SmartPantryAppService, IProductoAppService
 {
     private readonly IRepository<Producto, Guid> _productoRepository;
+    // Instanciamos el mapper de Mapperly
+    private readonly ProductoToProductoDtoMapper _mapper = new();
 
     public ProductoAppService(IRepository<Producto, Guid> productoRepository)
     {
         _productoRepository = productoRepository;
     }
 
-    /// <summary>
-    /// Crea un producto de forma manual aplicando las reglas del dominio[cite: 1].
-    /// </summary>
     public async Task<ProductoDto> CreateAsync(CreateProductoDto input)
     {
+        // Mapeo MANUAL de DTO a Entidad para respetar las reglas de dominio
         var producto = new Producto(
             GuidGenerator.Create(),
             input.CodigoBarras,
@@ -32,15 +30,53 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
         );
 
         await _productoRepository.InsertAsync(producto);
-        return ObjectMapper.Map<Producto, ProductoDto>(producto);
+
+        // Mapeo AUTOMÁTICO de Entidad a DTO usando Mapperly
+        return _mapper.Map(producto);
     }
 
-    /// <summary>
-    /// Consulta un producto por su Id. Si no existe, ABP lanza un 404 mediante EntityNotFoundException[cite: 1].
-    /// </summary>
     public async Task<ProductoDto> GetAsync(Guid id)
     {
         var producto = await _productoRepository.GetAsync(id);
-        return ObjectMapper.Map<Producto, ProductoDto>(producto);
+
+        // Mapeo AUTOMÁTICO de Entidad a DTO usando Mapperly
+        return _mapper.Map(producto);
+    }
+
+    public async Task<ProductoDto> UpdateAsync(Guid id, CreateUpdateProductoDto input)
+    {
+        var producto = await _productoRepository.GetAsync(id);
+
+        // Mapeo MANUAL de DTO a Entidad usando los métodos de mutación
+        producto.SetCodigoBarras(input.CodigoBarras);
+        producto.SetNombre(input.Nombre);
+        producto.SetMarca(input.Marca);
+
+        await _productoRepository.UpdateAsync(producto);
+
+        // Mapeo AUTOMÁTICO de Entidad a DTO usando Mapperly
+        return _mapper.Map(producto);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        await _productoRepository.DeleteAsync(id);
+    }
+
+    public async Task<PagedResultDto<ProductoDto>> GetListAsync(PagedAndSortedResultRequestDto input)
+    {
+        var totalCount = await _productoRepository.GetCountAsync();
+        var sorting = string.IsNullOrWhiteSpace(input.Sorting) ? nameof(Producto.Nombre) : input.Sorting;
+
+        var productos = await _productoRepository.GetPagedListAsync(
+            input.SkipCount,
+            input.MaxResultCount,
+            sorting
+        );
+
+        // Mapeo AUTOMÁTICO de Lista a Lista usando Mapperly
+        var dtos = _mapper.Map(productos);
+
+        return new PagedResultDto<ProductoDto>(totalCount, dtos);
     }
 }
