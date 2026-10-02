@@ -1,4 +1,5 @@
 using Riok.Mapperly.Abstractions;
+using System.Collections.Generic;
 using Volo.Abp.Mapperly;
 using SmartPantry.Authors;
 using SmartPantry.Books;
@@ -81,4 +82,14 @@ public partial class SmartPantryProductoToProductoDtoMapper : MapperBase<Product
     public override partial ProductoDto Map(Producto source);
 
     public override partial void Map(Producto source, ProductoDto destination);
+}
+
+[Mapper]
+public partial class ProductoToProductoDtoMapper
+{
+    // Este sí funciona perfecto porque solo lee propiedades de Producto 
+    // e instancia un ProductoDto (que tiene setters públicos).
+    public partial ProductoDto Map(Producto source);
+
+    public partial List<ProductoDto> Map(List<Producto> source);
 }
