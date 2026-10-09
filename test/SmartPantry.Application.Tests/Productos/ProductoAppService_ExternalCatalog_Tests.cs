@@ -10,7 +10,7 @@ using Xunit;
 
 namespace SmartPantry.Productos;
 
-public class ProductoAppService_ExternalCatalog_Tests 
+public class ProductoAppService_ExternalCatalog_Tests
 {
     private readonly IExternalProductCatalogClient _mockExternalClient;
     private readonly IRepository<Producto, Guid> _mockProductoRepository;
@@ -47,7 +47,7 @@ public class ProductoAppService_ExternalCatalog_Tests
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns(mockProductDto);
 
         // Act
-        var result = await _appService.BuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
         // Assert
         result.ShouldNotBeNull();
@@ -68,7 +68,7 @@ public class ProductoAppService_ExternalCatalog_Tests
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns((ExternalProductDto?)null);
 
         // Act
-        var result = await _appService.BuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
         // Assert
         result.ShouldNotBeNull();
@@ -94,7 +94,7 @@ public class ProductoAppService_ExternalCatalog_Tests
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns(mockProductIncompleto);
 
         // Act
-        var result = await _appService.BuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
         // Assert
         result.Encontrado.ShouldBeTrue();
@@ -114,7 +114,7 @@ public class ProductoAppService_ExternalCatalog_Tests
             .ThrowsAsync(new HttpRequestException("Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde."));
 
         // Act
-        var result = await _appService.BuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
         // Assert
         result.ShouldNotBeNull();
@@ -131,7 +131,7 @@ public class ProductoAppService_ExternalCatalog_Tests
             .ThrowsAsync(new Exception("Error no controlado del proveedor."));
 
         // Act
-        var result = await _appService.BuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
         // Assert
         result.ShouldNotBeNull();
