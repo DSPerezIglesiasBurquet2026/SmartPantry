@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -16,6 +17,7 @@ using OpenIddict.Server.AspNetCore;
 using SmartPantry.EntityFrameworkCore;
 using SmartPantry.MultiTenancy;
 using SmartPantry.HealthChecks;
+using SmartPantry.ClientesExternos;
 using Microsoft.OpenApi;
 using Volo.Abp;
 using Volo.Abp.Studio;
@@ -103,7 +105,7 @@ public class SmartPantryHttpApiHostModule : AbpModule
             {
                 options.DisableTransportSecurityRequirement = true;
             });
-            
+
             Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
@@ -127,6 +129,21 @@ public class SmartPantryHttpApiHostModule : AbpModule
         ConfigureSwagger(context, configuration);
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
+
+        // Registro de IHttpClientFactory para Open Food Facts (TP 07)
+        ConfigureExternalHttpClient(context);
+    }
+
+    private void ConfigureExternalHttpClient(ServiceConfigurationContext context)
+    {
+        context.Services.AddHttpClient<IExternalProductCatalogClient, OpenFoodFactsProductCatalogClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://world.openfoodfacts.org/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+
+            // TryAddWithoutValidation evita el System.FormatException al configurar correos o versiones en User-Agent
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "SmartPantryUTNFRCU - C# - Version 1.0 - contacto@smartpantry.utn.edu.ar");
+        });
     }
 
     private void ConfigureStudio(IHostEnvironment hostingEnvironment)
@@ -185,7 +202,6 @@ public class SmartPantryHttpApiHostModule : AbpModule
             );
         });
     }
-
 
     private void ConfigureVirtualFileSystem(ServiceConfigurationContext context)
     {
@@ -252,7 +268,6 @@ public class SmartPantryHttpApiHostModule : AbpModule
     {
         context.Services.AddSmartPantryHealthChecks();
     }
-
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
