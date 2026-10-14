@@ -138,4 +138,20 @@ public class ProductoAppService_ExternalCatalog_Tests
         result.Encontrado.ShouldBeFalse();
         result.MensajeError.ShouldBe("Ocurrió un error al comunicarse con el servicio externo de productos.");
     }
+
+    [Fact]
+    public void BuscarPorCodigo_CuandoTieneLetras_DebeFallarLaValidacion()
+    {
+        // Arrange
+        var dto = new BuscarProductoPorCodigoInputDto { Barcode = "123ABC789" };
+        var validationResults = new System.Collections.Generic.List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(dto);
+
+        // Act
+        var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(dto, validationContext, validationResults, true);
+
+        // Assert
+        isValid.ShouldBeFalse();
+        validationResults.ShouldContain(v => v.ErrorMessage == "El código de barras solo puede contener números.");
+    }
 }
