@@ -33,7 +33,10 @@ public class OpenFoodFactsProductCatalogClient : IExternalProductCatalogClient
         // Caso 2: Límite de peticiones superado (HTTP 429)
         if (response.StatusCode == (HttpStatusCode)429)
         {
-            throw new HttpRequestException("Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde.");
+            throw new HttpRequestException(
+                "Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde.",
+                inner: null,
+                statusCode: (HttpStatusCode)429);
         }
 
         response.EnsureSuccessStatusCode();
