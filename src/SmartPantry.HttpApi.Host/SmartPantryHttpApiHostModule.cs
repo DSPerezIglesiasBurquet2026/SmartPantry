@@ -41,6 +41,9 @@ using Volo.Abp.OpenIddict;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.Studio.Client.AspNetCore;
 using Volo.Abp.Security.Claims;
+using Volo.Abp.BackgroundWorkers; 
+using SmartPantry.Workers;
+using System.Threading.Tasks;
 
 namespace SmartPantry;
 
@@ -269,7 +272,7 @@ public class SmartPantryHttpApiHostModule : AbpModule
         context.Services.AddSmartPantryHealthChecks();
     }
 
-    public override void OnApplicationInitialization(ApplicationInitializationContext context)
+    public override async Task OnApplicationInitializationAsync(ApplicationInitializationContext context)
     {
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
@@ -313,8 +316,11 @@ public class SmartPantryHttpApiHostModule : AbpModule
             var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
             options.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
         });
+
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
         app.UseConfiguredEndpoints();
+
+        await context.AddBackgroundWorkerAsync<VencimientosWorker>();
     }
 }
