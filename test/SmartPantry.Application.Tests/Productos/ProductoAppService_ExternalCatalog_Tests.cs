@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
@@ -18,18 +20,16 @@ public class ProductoAppService_ExternalCatalog_Tests
 
     public ProductoAppService_ExternalCatalog_Tests()
     {
-        // Se crean las sustituciones/mocks de las dependencias (NSubstitute)
         _mockExternalClient = Substitute.For<IExternalProductCatalogClient>();
         _mockProductoRepository = Substitute.For<IRepository<Producto, Guid>>();
 
-        // Instanciamos el servicio inyectando los mocks
-        _appService = new ProductoAppService(_mockProductoRepository, _mockExternalClient);
+        _appService = new ProductoAppService(
+            _mockProductoRepository, _mockExternalClient, NullLogger<ProductoAppService>.Instance);
     }
 
     [Fact]
     public async Task BuscarPorCodigo_CuandoProductoExiste_DebeRetornarDatosMapeados()
     {
-        // Arrange
         var barcode = "3017620422003";
         var mockProductDto = new ExternalProductDto
         {
@@ -46,11 +46,10 @@ public class ProductoAppService_ExternalCatalog_Tests
 
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns(mockProductDto);
 
-        // Act
         var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
-        // Assert
         result.ShouldNotBeNull();
+        result.Estado.ShouldBe(EstadoBusquedaProducto.Encontrado);
         result.Encontrado.ShouldBeTrue();
         result.Barcode.ShouldBe(barcode);
         result.Nombre.ShouldBe("Nutella");
@@ -61,17 +60,15 @@ public class ProductoAppService_ExternalCatalog_Tests
     }
 
     [Fact]
-    public async Task BuscarPorCodigo_CuandoProductoNoExiste_DebeRetornarEncontradoFalse()
+    public async Task BuscarPorCodigo_CuandoProductoNoExiste_DebeRetornarNoEncontrado()
     {
-        // Arrange
         var barcode = "0000000000000";
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns((ExternalProductDto?)null);
 
-        // Act
         var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
-        // Assert
         result.ShouldNotBeNull();
+        result.Estado.ShouldBe(EstadoBusquedaProducto.NoEncontrado);
         result.Encontrado.ShouldBeFalse();
         result.MensajeError.ShouldBe("Producto no encontrado en el catálogo externo.");
     }
@@ -79,25 +76,23 @@ public class ProductoAppService_ExternalCatalog_Tests
     [Fact]
     public async Task BuscarPorCodigo_CuandoFaltanCamposOpcionales_DebeMantenerNulosSinInventarValores()
     {
-        // Arrange (RF-09: Datos incompletos)
+        // RF-09: Datos incompletos
         var barcode = "1234567890123";
         var mockProductIncompleto = new ExternalProductDto
         {
             Barcode = barcode,
             Name = "Galletitas Genéricas",
-            Brand = null, // Marca no informada
-            ImageUrl = null, // Imagen no informada
+            Brand = null,
+            ImageUrl = null,
             Ingredients = null,
             NutriScore = null
         };
 
         _mockExternalClient.GetByBarcodeAsync(barcode).Returns(mockProductIncompleto);
 
-        // Act
         var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
-        // Assert
-        result.Encontrado.ShouldBeTrue();
+        result.Estado.ShouldBe(EstadoBusquedaProducto.Encontrado);
         result.Nombre.ShouldBe("Galletitas Genéricas");
         result.Marca.ShouldBeNull();
         result.ImagenUrl.ShouldBeNull();
@@ -106,51 +101,58 @@ public class ProductoAppService_ExternalCatalog_Tests
     }
 
     [Fact]
-    public async Task BuscarPorCodigo_CuandoExcedeLimitePeticiones_DebeManejarErrorHTTP429()
+    public async Task BuscarPorCodigo_CuandoExcedeLimitePeticiones_DebeRetornarLimiteSolicitudes()
     {
-        // Arrange
         var barcode = "3017620422003";
         _mockExternalClient.GetByBarcodeAsync(barcode)
-            .ThrowsAsync(new HttpRequestException("Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde."));
+            .ThrowsAsync(new HttpRequestException("límite", null, (HttpStatusCode)429));
 
-        // Act
         var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
-        // Assert
         result.ShouldNotBeNull();
+        result.Estado.ShouldBe(EstadoBusquedaProducto.LimiteSolicitudes);
         result.Encontrado.ShouldBeFalse();
         result.MensajeError.ShouldContain("límite de solicitudes");
     }
 
     [Fact]
-    public async Task BuscarPorCodigo_CuandoServicioExternoNoEstaDisponible_DebeManejarErrorSinLanzarExcepcion()
+    public async Task BuscarPorCodigo_CuandoProveedorDevuelve503_DebeRetornarServicioNoDisponible()
     {
-        // Arrange
         var barcode = "3017620422003";
         _mockExternalClient.GetByBarcodeAsync(barcode)
-            .ThrowsAsync(new Exception("Error no controlado del proveedor."));
+            .ThrowsAsync(new HttpRequestException(
+                "Response status code does not indicate success: 503", null, HttpStatusCode.ServiceUnavailable));
 
-        // Act
         var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
 
-        // Assert
         result.ShouldNotBeNull();
+        result.Estado.ShouldBe(EstadoBusquedaProducto.ServicioNoDisponible);
         result.Encontrado.ShouldBeFalse();
+        result.MensajeError.ShouldBe("Ocurrió un error al comunicarse con el servicio externo de productos.");
+    }
+
+    [Fact]
+    public async Task BuscarPorCodigo_CuandoFallaLaRed_DebeRetornarServicioNoDisponible()
+    {
+        var barcode = "3017620422003";
+        _mockExternalClient.GetByBarcodeAsync(barcode)
+            .ThrowsAsync(new TaskCanceledException("Timeout"));
+
+        var result = await _appService.GetBuscarPorCodigoAsync(new BuscarProductoPorCodigoInputDto { Barcode = barcode });
+
+        result.Estado.ShouldBe(EstadoBusquedaProducto.ServicioNoDisponible);
         result.MensajeError.ShouldBe("Ocurrió un error al comunicarse con el servicio externo de productos.");
     }
 
     [Fact]
     public void BuscarPorCodigo_CuandoTieneLetras_DebeFallarLaValidacion()
     {
-        // Arrange
         var dto = new BuscarProductoPorCodigoInputDto { Barcode = "123ABC789" };
         var validationResults = new System.Collections.Generic.List<System.ComponentModel.DataAnnotations.ValidationResult>();
         var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(dto);
 
-        // Act
         var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(dto, validationContext, validationResults, true);
 
-        // Assert
         isValid.ShouldBeFalse();
         validationResults.ShouldContain(v => v.ErrorMessage == "El código de barras solo puede contener números.");
     }

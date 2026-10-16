@@ -1,7 +1,4 @@
 <Solution>
-    <Configurations>
-        <Platform Name="Any CPU" />
-    </Configurations>
     <Folder Name="/src/">
         <Project Path="src/SmartPantry.Domain/SmartPantry.Domain.csproj" />
         <Project Path="src/SmartPantry.Application/SmartPantry.Application.csproj" />
@@ -16,6 +13,7 @@
     <Folder Name="/test/">
         <Project Path="test/SmartPantry.Application.Tests/SmartPantry.Application.Tests.csproj" />
         <Project Path="test/SmartPantry.EntityFrameworkCore.Tests/SmartPantry.EntityFrameworkCore.Tests.csproj" />
+        <Project Path="test/SmartPantry.HttpApi.Host.Tests/SmartPantry.HttpApi.Host.Tests.csproj" />
         <Project Path="test/SmartPantry.TestBase/SmartPantry.TestBase.csproj" />
         <Project Path="test/SmartPantry.Domain.Tests/SmartPantry.Domain.Tests.csproj" />
         <Project Path="test/SmartPantry.HttpApi.Client.ConsoleTestApp/SmartPantry.HttpApi.Client.ConsoleTestApp.csproj" />
