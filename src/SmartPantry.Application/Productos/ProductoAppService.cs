@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using SmartPantry.ClientesExternos;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
+using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace SmartPantry.Productos;
 
@@ -14,20 +16,20 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
 {
     private readonly IRepository<Producto, Guid> _productoRepository;
     private readonly IExternalProductCatalogClient _externalCatalogClient;
+    private readonly ILogger<ProductoAppService> _logger;
 
     private readonly ProductoToProductoDtoMapper _mapper = new();
 
     public ProductoAppService(
         IRepository<Producto, Guid> productoRepository,
-        IExternalProductCatalogClient externalCatalogClient)
+        IExternalProductCatalogClient externalCatalogClient,
+        ILogger<ProductoAppService> logger)
     {
         _productoRepository = productoRepository;
         _externalCatalogClient = externalCatalogClient;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Consulta un producto por código de barras en la API externa de Open Food Facts (RF-05, TP 07)
-    /// </summary>
     public async Task<ResultadoBusquedaProductoDto> GetBuscarPorCodigoAsync(BuscarProductoPorCodigoInputDto input)
     {
         try
@@ -39,7 +41,7 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
                 return new ResultadoBusquedaProductoDto
                 {
                     Barcode = input.Barcode,
-                    Encontrado = false,
+                    Estado = EstadoBusquedaProducto.NoEncontrado,
                     MensajeError = "Producto no encontrado en el catálogo externo."
                 };
             }
@@ -57,24 +59,27 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
                 Alergenos = externalProduct.Allergens ?? new List<string>(),
                 NutriScore = externalProduct.NutriScore,
                 NovaGroup = externalProduct.NovaGroup,
-                Encontrado = true
+                Estado = EstadoBusquedaProducto.Encontrado
             };
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
         {
+            _logger.LogWarning(ex, "Límite de solicitudes de Open Food Facts alcanzado");
             return new ResultadoBusquedaProductoDto
             {
                 Barcode = input.Barcode,
-                Encontrado = false,
-                MensajeError = ex.Message
+                Estado = EstadoBusquedaProducto.LimiteSolicitudes,
+                MensajeError = "Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde."
             };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // 5xx, red caída, timeout, etc.
+            _logger.LogError(ex, "Error consultando Open Food Facts");
             return new ResultadoBusquedaProductoDto
             {
                 Barcode = input.Barcode,
-                Encontrado = false,
+                Estado = EstadoBusquedaProducto.ServicioNoDisponible,
                 MensajeError = "Ocurrió un error al comunicarse con el servicio externo de productos."
             };
         }
