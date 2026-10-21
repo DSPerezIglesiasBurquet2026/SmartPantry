@@ -14,7 +14,8 @@ public class ResultadoBusquedaProductoDto
     public string? NutriScore { get; set; }
     public string? NovaGroup { get; set; }
 
-    // Banderas e información de estado para la aplicación propia
-    public bool Encontrado { get; set; }
+    // Estado explícito del resultado: encontrado, no encontrado, límite de solicitudes o servicio no disponible
+    public EstadoBusquedaProducto Estado { get; set; }
+    public bool Encontrado => Estado == EstadoBusquedaProducto.Encontrado;
     public string? MensajeError { get; set; }
 }

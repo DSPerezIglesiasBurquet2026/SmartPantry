@@ -15,6 +15,7 @@ using Volo.Abp.Identity.EntityFrameworkCore;
 using Volo.Abp.PermissionManagement.EntityFrameworkCore;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.OpenIddict.EntityFrameworkCore;
+using SmartPantry.Despensa;
 
 namespace SmartPantry.EntityFrameworkCore;
 
@@ -30,7 +31,10 @@ public class SmartPantryDbContext :
 
     public DbSet<Book> Books { get; set; }
 
-    
+    // 👇 Agrega estas dos líneas para el TP-08
+    public DbSet<ItemDespensa> ItemsDespensa { get; set; }
+    public DbSet<AdvertenciaVencimiento> AdvertenciasVencimiento { get; set; }
+
     public DbSet<Producto> Productos { get; set; }
 
     #region Entities from the modules
@@ -112,6 +116,40 @@ public class SmartPantryDbContext :
 
             // Regla de negocio: El código de barras no se duplica en el sistema
             b.HasIndex(x => x.CodigoBarras).IsUnique();
+        });
+
+        // ... (código de builder.Entity<Producto>)
+
+        // 👇 Mapeo para el TP-08: ItemDespensa y Advertencias
+        builder.Entity<ItemDespensa>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "ItemsDespensa", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention(); // Auditorías e Id base de ABP
+
+            b.Property(x => x.PropietarioId).IsRequired();
+            b.Property(x => x.ProductoId).IsRequired();
+            b.Property(x => x.Consumido).IsRequired();
+
+            // Relación con Producto para mantener integridad referencial
+            b.HasOne<Producto>().WithMany().HasForeignKey(x => x.ProductoId).IsRequired();
+        });
+
+        builder.Entity<AdvertenciaVencimiento>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "AdvertenciasVencimiento", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ItemDespensaId).IsRequired();
+            b.Property(x => x.Tipo).IsRequired();
+            b.Property(x => x.Activa).IsRequired();
+            b.Property(x => x.Mensaje).IsRequired().HasMaxLength(250);
+
+            // Relación con ItemDespensa
+            b.HasOne<ItemDespensa>().WithMany().HasForeignKey(x => x.ItemDespensaId).IsRequired();
+
+            // REGLA DE NEGOCIO (TP-08): Índice único por Ítem y Tipo de Advertencia
+            // Esto refuerza la ausencia de duplicados a nivel estructural en la base de datos
+            b.HasIndex(x => new { x.ItemDespensaId, x.Tipo }).IsUnique();
         });
     }
 }
