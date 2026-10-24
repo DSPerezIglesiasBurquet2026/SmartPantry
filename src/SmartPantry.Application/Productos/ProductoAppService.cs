@@ -9,9 +9,11 @@ using Volo.Abp.Domain.Repositories;
 using System.Net;
 using Microsoft.Extensions.Logging;
 
+
 namespace SmartPantry.Productos;
 
-[AllowAnonymous]
+//[AllowAnonymous] reemplazo por authorize para que solo usuarios autenticados puedan acceder a los endpoints de productos
+[Authorize]
 public class ProductoAppService : SmartPantryAppService, IProductoAppService
 {
     private readonly IRepository<Producto, Guid> _productoRepository;
