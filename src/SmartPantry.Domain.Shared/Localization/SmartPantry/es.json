@@ -37,6 +37,25 @@
     "Unspecified": "Sistema",
     "SeeAllUsers": "Ver todos los usuarios",
     "TakePhoto": "Tomar foto",
-    "ChoosePhoto": "Escoge una foto"
+    "ChoosePhoto": "Escoge una foto",
+    "Menu:Pantry": "Mi Despensa",
+    "Pantry:Loading": "Cargando ítems...",
+    "Pantry:LoadError": "Ocurrió un error al cargar la despensa.",
+    "Pantry:Retry": "Reintentar",
+    "Pantry:Empty": "Tu despensa está vacía.",
+    "Pantry:ProductName": "Producto",
+    "Pantry:ExpirationDate": "Vencimiento",
+    "Pantry:Quantity": "Cantidad",
+    "Pantry:Unit": "Unidad",
+    "Pantry:Actions": "Acciones",
+    "Pantry:EditItem": "Editar Ítem",
+    "Pantry:Cancel": "Cancelar",
+    "Pantry:Save": "Guardar",
+    "Pantry:Saving": "Guardando...",
+    "Pantry:DeleteConfirmationTitle": "¿Eliminar ítem?",
+    "Pantry:DeleteConfirmationMessage": "¿Estás seguro de que deseas eliminar este ítem de tu despensa? Esta acción no se puede deshacer.",
+    "Pantry:InvalidQuantity": "La cantidad no puede ser negativa.",
+    "Pantry:NoData": "No especificado",
+    "Pantry:Consumed": "Consumido"
   }
 }
