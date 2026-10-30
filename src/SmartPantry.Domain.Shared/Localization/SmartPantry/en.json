@@ -45,6 +45,24 @@
     "Permission:Authors.Delete": "Deleting the authors",
     "Menu:Home": "Home",
     "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information visit",
-    "Welcome": "Welcome"
+    "Welcome": "Welcome",
+    "Menu:Pantry": "My Pantry",
+    "Pantry:Loading": "Loading items...",
+    "Pantry:LoadError": "An error occurred while loading the pantry.",
+    "Pantry:Retry": "Retry",
+    "Pantry:Empty": "Your pantry is empty.",
+    "Pantry:ProductName": "Product Name",
+    "Pantry:ExpirationDate": "Expiration Date",
+    "Pantry:Quantity": "Quantity",
+    "Pantry:Unit": "Unit",
+    "Pantry:Actions": "Actions",
+    "Pantry:EditItem": "Edit Item",
+    "Pantry:Cancel": "Cancel",
+    "Pantry:Save": "Save",
+    "Pantry:Saving": "Saving...",
+    "Pantry:DeleteConfirmationTitle": "Delete Item?",
+    "Pantry:DeleteConfirmationMessage": "Are you sure you want to delete this item? This action cannot be undone.",
+    "Pantry:InvalidQuantity": "Quantity cannot be negative.",
+    "Pantry:NoData": "Not specified"
   }
 }
