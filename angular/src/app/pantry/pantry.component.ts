@@ -1,40 +1,62 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { catchError } from 'rxjs/operators';
-import { throwError } from 'rxjs';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators
+} from '@angular/forms';
 import { CoreModule, ListService, PagedResultDto } from '@abp/ng.core';
-import { ConfirmationService, Confirmation } from '@abp/ng.theme.shared'; // Servicio de confirmación requerido
+import { ConfirmationService, Confirmation } from '@abp/ng.theme.shared';
+import { NgbPagination } from '@ng-bootstrap/ng-bootstrap';
+import { Subscription } from 'rxjs';
 
 import { ItemDespensaService } from '../proxy/despensa/item-despensa.service';
 import { ItemDespensaDto } from '../proxy/despensa/models';
-import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap';
+
+// Validador de fecha: el campo puede estar vacío, pero si tiene valor debe ser una fecha parseable.
+function validDate(control: AbstractControl): ValidationErrors | null {
+  const value = control.value;
+  if (!value) {
+    return null;
+  }
+  return isNaN(Date.parse(value)) ? { invalidDate: true } : null;
+}
+
 @Component({
   selector: 'app-pantry',
   standalone: true,
-  // 👇 Se agrega ReactiveFormsModule[cite: 3]
-  imports: [CommonModule, CoreModule, ReactiveFormsModule, NgbPaginationModule],
+  imports: [CommonModule, CoreModule, ReactiveFormsModule, NgbPagination],
   providers: [ListService],
   templateUrl: './pantry.component.html',
   styleUrls: ['./pantry.component.scss']
 })
-export class PantryComponent implements OnInit {
+export class PantryComponent implements OnInit, OnDestroy {
+  // Estado del listado
   items: ItemDespensaDto[] = [];
   totalCount = 0;
   isLoading = true;
   hasError = false;
-  updateSuccessMessage = false;
-  // Variables para la edición[cite: 3]
+
+  // Estado de la edición
   isModalOpen = false;
   isSaving = false;
-  form!: FormGroup;// Agregamos '!' para decirle a TS que lo inicializaremos luego (en ngOnInit)
-  selectedItemId?: string | null = null; // Aceptamos undefined para que coincida con el tipo generado por ABP
+  form!: FormGroup; // Se inicializa en ngOnInit (buildForm)
+  selectedItemId?: string | null = null; // Acepta undefined para coincidir con el tipo generado por ABP
+
+  // Mensaje de confirmación tras guardar (se oculta solo a los 3 segundos)
+  updateSuccessMessage = false;
+  private successTimeout?: ReturnType<typeof setTimeout>;
+
+  private listSubscription?: Subscription;
 
   constructor(
     public readonly list: ListService,
     private itemDespensaService: ItemDespensaService,
     private fb: FormBuilder,
-    private confirmation: ConfirmationService, // Inyectamos el servicio de confirmación[cite: 3]
+    private confirmation: ConfirmationService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -43,12 +65,17 @@ export class PantryComponent implements OnInit {
     this.loadItems();
   }
 
-  // Creación del formulario reactivo con validaciones[cite: 3]
+  ngOnDestroy(): void {
+    this.listSubscription?.unsubscribe();
+    clearTimeout(this.successTimeout);
+  }
+
+  // Formulario reactivo con las mismas reglas que valida el servidor (por usabilidad; el servidor sigue validando)
   buildForm(): void {
     this.form = this.fb.group({
-      cantidad: [null, [Validators.min(0)]], // Validación: cantidad no negativa[cite: 3]
+      cantidad: [null, [Validators.min(0)]],
       unidad: [null, [Validators.maxLength(50)]],
-      fechaVencimiento: [null]
+      fechaVencimiento: [null, [validDate]]
     });
   }
 
@@ -56,26 +83,21 @@ export class PantryComponent implements OnInit {
     this.isLoading = true;
     this.hasError = false;
 
-    const streamCreator = (query: any) =>
-      this.itemDespensaService.getList(query, { skipHandleError: true }).pipe(
-        // Atrapamos el error aquí mismo antes de que ListService lo procese
-        catchError(err => {
-          this.hasError = true;
-          this.isLoading = false;
-          this.cdr.detectChanges(); // Forzamos la actualización de la pantalla
-          return throwError(() => err);
-        })
-      );
+    // Si ya había una suscripción previa (por ejemplo, tras un error), se descarta antes de crear otra.
+    this.listSubscription?.unsubscribe();
 
-    this.list.hookToQuery(streamCreator).subscribe({
-      next: (response: any) => {
+    // skipHandleError: el componente maneja el error del listado con su propio estado y botón de reintentar.
+    const streamCreator = (query: any) =>
+      this.itemDespensaService.getList(query, { skipHandleError: true });
+
+    this.listSubscription = this.list.hookToQuery(streamCreator).subscribe({
+      next: (response: PagedResultDto<ItemDespensaDto>) => {
         this.items = response?.items || [];
-        this.totalCount = response?.totalCount || 0;
+        this.totalCount = response?.totalCount ?? 0;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        // Mantenemos este bloque por seguridad, aunque catchError hará el trabajo principal
         this.hasError = true;
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -85,32 +107,38 @@ export class PantryComponent implements OnInit {
     this.list.get();
   }
 
+  // Tras un error el stream de hookToQuery termina, por eso se vuelve a crear la suscripción completa.
   retry(): void {
-    this.list.get();
+    this.loadItems();
   }
 
-  // --- MÉTODOS DEL PUNTO 6 ---
+  onPageChange(page: number): void {
+    // ngb-pagination es 1-based; ListService trabaja con índice de página base 0.
+    this.list.page = page - 1;
+  }
 
-  // 1. Edición: Precargar datos
+  // --- Edición, consumo y eliminación ---
+
   edit(item: ItemDespensaDto): void {
     this.selectedItemId = item.id;
 
-    const formattedDate = item.fechaVencimiento
-      ? new Date(item.fechaVencimiento).toISOString().split('T')[0]
-      : null;
-
-    this.form.patchValue({
-      cantidad: item.cantidad,
-      unidad: item.unidad,
-      fechaVencimiento: formattedDate
+    this.form.reset({
+      cantidad: item.cantidad ?? null,
+      unidad: item.unidad ?? null,
+      fechaVencimiento: this.toDateInputValue(item.fechaVencimiento)
     });
 
     this.isModalOpen = true;
   }
 
-  // Guardar cambios
   save(): void {
-    if (this.form.invalid || !this.selectedItemId) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    if (this.isSaving || !this.selectedItemId) {
+      return;
+    }
 
     this.isSaving = true;
 
@@ -118,11 +146,11 @@ export class PantryComponent implements OnInit {
       next: () => {
         this.isModalOpen = false;
         this.isSaving = false;
-        this.updateSuccessMessage = true;
-        setTimeout(() => this.updateSuccessMessage = false, 3000);
+        this.showUpdateSuccess();
         this.list.get();
       },
       error: () => {
+        // ABP muestra el mensaje del servidor; el panel queda abierto y el formulario conserva lo ingresado.
         this.isSaving = false;
       }
     });
@@ -132,7 +160,6 @@ export class PantryComponent implements OnInit {
     this.isModalOpen = false;
   }
 
-  // 2. Marcar como consumido (Recibe string opcional y valida)
   consume(id?: string): void {
     if (!id) return;
     this.itemDespensaService.marcarComoConsumido(id).subscribe(() => {
@@ -140,7 +167,6 @@ export class PantryComponent implements OnInit {
     });
   }
 
-  // 3. Eliminar con confirmación (Recibe string opcional y valida)
   delete(id?: string): void {
     if (!id) return;
 
@@ -152,10 +178,19 @@ export class PantryComponent implements OnInit {
         }
       });
   }
-  // 👇 Método para manejar el cambio de página
-  onPageChange(page: number): void {
-    // ListService usa índice cero, ngb-pagination usa índice 1
-    this.list.page = page - 1;
+
+  // Muestra el mensaje de éxito y lo oculta automáticamente a los 3 segundos.
+  private showUpdateSuccess(): void {
+    clearTimeout(this.successTimeout);
+    this.updateSuccessMessage = true;
+    this.successTimeout = setTimeout(() => {
+      this.updateSuccessMessage = false;
+      this.cdr.detectChanges();
+    }, 3000);
   }
 
+  // Toma los primeros 10 caracteres (yyyy-MM-dd) sin convertir a UTC, para no correr el día por la zona horaria.
+  private toDateInputValue(value?: string | null): string | null {
+    return value ? String(value).substring(0, 10) : null;
+  }
 }
