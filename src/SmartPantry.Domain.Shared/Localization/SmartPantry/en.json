@@ -63,6 +63,13 @@
     "Pantry:DeleteConfirmationTitle": "Delete Item?",
     "Pantry:DeleteConfirmationMessage": "Are you sure you want to delete this item? This action cannot be undone.",
     "Pantry:InvalidQuantity": "Quantity cannot be negative.",
-    "Pantry:NoData": "Not specified"
+    "Pantry:NoData": "Not specified",
+    "Pantry:Consumed": "Consumed",
+    "Pantry:InvalidUnit": "Unit cannot exceed 50 characters.",
+    "Pantry:InvalidDate": "Enter a valid date.",
+    "Pantry:EditAction": "Edit",
+    "Pantry:ConsumeAction": "Mark as consumed",
+    "Pantry:DeleteAction": "Delete",
+    "Pantry:UpdateSuccess": "Item updated successfully."
   }
 }

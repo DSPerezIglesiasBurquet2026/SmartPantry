@@ -56,6 +56,12 @@
     "Pantry:DeleteConfirmationMessage": "¿Estás seguro de que deseas eliminar este ítem de tu despensa? Esta acción no se puede deshacer.",
     "Pantry:InvalidQuantity": "La cantidad no puede ser negativa.",
     "Pantry:NoData": "No especificado",
-    "Pantry:Consumed": "Consumido"
+    "Pantry:Consumed": "Consumido",
+    "Pantry:InvalidUnit": "La unidad no puede superar los 50 caracteres.",
+    "Pantry:InvalidDate": "Ingresá una fecha válida.",
+    "Pantry:EditAction": "Editar",
+    "Pantry:ConsumeAction": "Marcar como consumido",
+    "Pantry:DeleteAction": "Eliminar",
+    "Pantry:UpdateSuccess": "Ítem modificado correctamente."
   }
 }
