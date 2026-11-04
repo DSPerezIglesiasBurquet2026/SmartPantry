@@ -10,8 +10,13 @@ public interface IItemDespensaAppService : IApplicationService
     // Listar de forma paginada[cite: 7]
     Task<PagedResultDto<ItemDespensaDto>> GetListAsync(PagedAndSortedResultRequestDto input);
 
+    //Crear un nuevo ítem[cite: 7]
+
+    Task<ItemDespensaDto> CreateAsync(CreateItemDespensaDto input);
+
     // Actualizar cantidad, unidad y fecha de vencimiento[cite: 7]
     Task UpdateAsync(Guid id, UpdateItemDespensaDto input);
+
 
     // Marcar un ítem como consumido[cite: 7]
     Task MarcarComoConsumidoAsync(Guid id);
