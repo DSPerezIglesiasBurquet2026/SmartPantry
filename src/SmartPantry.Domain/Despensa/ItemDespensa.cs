@@ -9,7 +9,8 @@ public class ItemDespensa : FullAuditedAggregateRoot<Guid>
     public Guid ProductoId { get; private set; }
     public DateTime? FechaVencimiento { get; private set; }
     public bool Consumido { get; private set; }
-
+    public decimal? Cantidad { get; set; }
+    public string? Unidad { get; set; } // El '?' lo hace opcional y mapeable a NULL
     private ItemDespensa() { }
 
     public ItemDespensa(Guid id, Guid propietarioId, Guid productoId, DateTime? fechaVencimiento = null) : base(id)
