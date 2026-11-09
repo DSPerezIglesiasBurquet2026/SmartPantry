@@ -84,3 +84,14 @@ Si en algún momento se usa un servidor remoto o una cadena con usuario/contrase
 - `SmartPantry.DbMigrator`: aplicación de consola que aplica migraciones y siembra datos iniciales
 - `SmartPantry.HttpApi.Host`: API ASP.NET Core expuesta a los clientes
 - `test/`: proyectos de test (`Application.Tests`, `Domain.Tests`, `EntityFrameworkCore.Tests`)
+
+## Documentación TP-10: Pantalla "Mi Despensa"
+
+### Decisiones de Diseño e Implementación
+- **Uso del ListService:** Se optó por inyectar y utilizar el `ListService` proporcionado por el framework ABP, dado que la operación `GetListAsync` del backend devuelve resultados de forma paginada (`PagedResultDto`). Esto nos permite delegar la responsabilidad del estado de paginación y ordenamiento directamente al servicio de ABP.
+- **Manejo de Ítems Consumidos (Regla de Negocio 6):** El equipo decidió que los ítems marcados como consumidos NO se eliminan automáticamente. En su lugar, se conservan a modo de historial visualmente diferenciados (tachados y con una etiqueta "Consumido") y se deshabilitan las opciones de edición para proteger la integridad del dato histórico. La eliminación queda como una acción explícita del usuario.
+- **Criterio de Fechas:** Las fechas de vencimiento se renderizan aplicando el formato de la configuración regional local del navegador del usuario (utilizando el pipe de Angular `date:'shortDate'`), aunque en el backend (y worker) operen con criterio UTC.
+- **Aislamiento de Datos (Prevención de Enumeración):** Se definió que si un usuario intenta operar (editar, consumir o eliminar) sobre un ítem que pertenece a otro usuario mediante la API, el sistema retorne un error HTTP `404 Not Found` en lugar de un `403 Forbidden`. Esta medida de seguridad evita la enumeración de IDs, impidiendo que un atacante pueda confirmar la existencia de registros ajenos; en el contexto del usuario actual, el ítem ajeno simplemente "no existe".
+- **Manejo de Errores HTTP:** 
+  * Se aplicó la configuración `{ skipHandleError: true }` exclusivamente en la obtención del listado de ítems. El motivo es que el componente ya posee un estado visual dedicado (`hasError = true`) que renderiza un mensaje amigable y un botón de "Reintentar", evitando así mostrar cuadros de diálogo duplicados (el global de ABP y el local del componente).
+  * Para las peticiones de mutación (Editar, Consumir, Eliminar), se dejó el manejo predeterminado de ABP, garantizando que el usuario nunca vea detalles técnicos en crudo.
