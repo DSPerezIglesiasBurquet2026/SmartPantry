@@ -46,7 +46,12 @@ public class DespensaDataSeedContributor : IDataSeedContributor, ITransientDepen
     }
 
     private async Task CrearItemAsync(
-        string codigoBarras, string nombre, Guid propietarioId, DateTime? fechaVencimiento, bool consumido = false)
+        string codigoBarras,
+        string nombre,
+        Guid propietarioId,
+        DateTime? fechaVencimiento,
+        string unidad = "Unidad",
+        bool consumido = false)
     {
         // Reusar el producto si ya existe (el código de barras es único)
         var producto = await _productoRepository.FirstOrDefaultAsync(p => p.CodigoBarras == codigoBarras)
@@ -54,7 +59,12 @@ public class DespensaDataSeedContributor : IDataSeedContributor, ITransientDepen
                 new Producto(_guidGenerator.Create(), codigoBarras, nombre, "Marca Seed"),
                 autoSave: true);
 
-        var item = new ItemDespensa(_guidGenerator.Create(), propietarioId, producto.Id, fechaVencimiento);
+        // Se usa el constructor de 4 argumentos y se setea la propiedad Unidad
+        var item = new ItemDespensa(_guidGenerator.Create(), propietarioId, producto.Id, fechaVencimiento)
+        {
+            Unidad = unidad
+        };
+
         if (consumido)
         {
             item.MarcarComoConsumido();
