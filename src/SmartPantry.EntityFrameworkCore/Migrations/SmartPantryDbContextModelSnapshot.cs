@@ -277,7 +277,6 @@ namespace SmartPantry.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Unidad")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
