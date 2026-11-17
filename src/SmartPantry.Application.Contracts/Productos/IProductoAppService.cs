@@ -21,4 +21,6 @@ public interface IProductoAppService : IApplicationService
     Task DeleteAsync(Guid id);
 
     Task<PagedResultDto<ProductoDto>> GetListAsync(PagedAndSortedResultRequestDto input);
+
+    Task<PagedResultDto<ResultadoBusquedaProductoDto>> BuscarPorTextoAsync(BuscarProductoPorTextoInputDto input);
 }
