@@ -14,15 +14,32 @@ import { NgbPagination } from '@ng-bootstrap/ng-bootstrap';
 import { Subscription } from 'rxjs';
 
 import { ItemDespensaService } from '../proxy/despensa/item-despensa.service';
-import { ItemDespensaDto } from '../proxy/despensa/models';
+import { CreateItemDespensaDto, ItemDespensaDto } from '../proxy/despensa/models';
+import { ProductoService } from '../proxy/productos/producto.service';
+import { ProductoDto } from '../proxy/productos/models';
 
-// Validador de fecha: el campo puede estar vacío, pero si tiene valor debe ser una fecha parseable.
+// Validador de fecha: el campo puede estar vacío, pero si tiene valor debe ser una fecha real y parseable.
 function validDate(control: AbstractControl): ValidationErrors | null {
   const value = control.value;
   if (!value) {
     return null;
   }
-  return isNaN(Date.parse(value)) ? { invalidDate: true } : null;
+
+  const strValue = String(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(strValue);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    const isReal =
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day;
+    return isReal ? null : { invalidDate: true };
+  }
+
+  return isNaN(Date.parse(strValue)) ? { invalidDate: true } : null;
 }
 
 @Component({
@@ -40,21 +57,33 @@ export class PantryComponent implements OnInit, OnDestroy {
   isLoading = true;
   hasError = false;
 
+  // Catálogo de productos disponibles para el selector de alta
+  productos: ProductoDto[] = [];
+
+  // Estado del alta (RF-10)
+  isCreateModalOpen = false;
+  isSubmitting = false;
+  createForm!: FormGroup;
+  createErrorMessage = false;
+
   // Estado de la edición
   isModalOpen = false;
   isSaving = false;
-  form!: FormGroup; // Se inicializa en ngOnInit (buildForm)
-  selectedItemId?: string | null = null; // Acepta undefined para coincidir con el tipo generado por ABP
+  form!: FormGroup;
+  selectedItemId?: string | null = null;
 
-  // Mensaje de confirmación tras guardar (se oculta solo a los 3 segundos)
+  // Mensajes de confirmación tras guardar (se ocultan solos a los 3 segundos)
+  createSuccessMessage = false;
   updateSuccessMessage = false;
   private successTimeout?: ReturnType<typeof setTimeout>;
+  private createSuccessTimeout?: ReturnType<typeof setTimeout>;
 
   private listSubscription?: Subscription;
 
   constructor(
     public readonly list: ListService,
     private itemDespensaService: ItemDespensaService,
+    private productoService: ProductoService,
     private fb: FormBuilder,
     private confirmation: ConfirmationService,
     private cdr: ChangeDetectorRef
@@ -62,15 +91,28 @@ export class PantryComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.buildForm();
+    this.buildCreateForm();
+    this.loadProductos();
     this.loadItems();
   }
 
   ngOnDestroy(): void {
     this.listSubscription?.unsubscribe();
     clearTimeout(this.successTimeout);
+    clearTimeout(this.createSuccessTimeout);
   }
 
-  // Formulario reactivo con las mismas reglas que valida el servidor (por usabilidad; el servidor sigue validando)
+  // Formulario reactivo para alta de ítem (RF-10)
+  buildCreateForm(): void {
+    this.createForm = this.fb.group({
+      productoId: [null, [Validators.required]],
+      cantidad: [null, [Validators.min(0)]],
+      unidad: [null, [Validators.maxLength(50)]],
+      fechaVencimiento: [null, [validDate]]
+    });
+  }
+
+  // Formulario reactivo para edición de ítem
   buildForm(): void {
     this.form = this.fb.group({
       cantidad: [null, [Validators.min(0)]],
@@ -79,14 +121,26 @@ export class PantryComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadProductos(): void {
+    this.productoService
+      .getList({ maxResultCount: 1000, skipCount: 0 }, { skipHandleError: true })
+      .subscribe({
+        next: (response: PagedResultDto<ProductoDto>) => {
+          this.productos = response?.items || [];
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.productos = [];
+        }
+      });
+  }
+
   loadItems(): void {
     this.isLoading = true;
     this.hasError = false;
 
-    // Si ya había una suscripción previa (por ejemplo, tras un error), se descarta antes de crear otra.
     this.listSubscription?.unsubscribe();
 
-    // skipHandleError: el componente maneja el error del listado con su propio estado y botón de reintentar.
     const streamCreator = (query: any) =>
       this.itemDespensaService.getList(query, { skipHandleError: true });
 
@@ -107,19 +161,85 @@ export class PantryComponent implements OnInit, OnDestroy {
     this.list.get();
   }
 
-  // Tras un error el stream de hookToQuery termina, por eso se vuelve a crear la suscripción completa.
   retry(): void {
     this.loadItems();
   }
 
   onPageChange(page: number): void {
-    // ngb-pagination es 1-based; ListService trabaja con índice de página base 0.
     this.list.page = page - 1;
+  }
+
+  // --- Alta de ítem en despensa (RF-10) ---
+
+  openCreateModal(): void {
+    this.isModalOpen = false; // Cierra edición si estaba abierta
+    this.createErrorMessage = false;
+    this.createForm.reset({
+      productoId: null,
+      cantidad: null,
+      unidad: null,
+      fechaVencimiento: null
+    });
+    this.isCreateModalOpen = true;
+  }
+
+  cancelCreate(): void {
+    this.isCreateModalOpen = false;
+    this.createErrorMessage = false;
+    this.createForm.reset();
+  }
+
+  saveNewItem(): void {
+    if (this.createForm.invalid) {
+      this.createForm.markAllAsTouched();
+      return;
+    }
+    if (this.isSubmitting) {
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.createErrorMessage = false;
+
+    const raw = this.createForm.value;
+    const payload: CreateItemDespensaDto = {
+      productoId: raw.productoId,
+      cantidad: raw.cantidad !== null && raw.cantidad !== '' ? Number(raw.cantidad) : null,
+      unidad: raw.unidad?.trim() ? raw.unidad.trim() : null,
+      fechaVencimiento: raw.fechaVencimiento ? raw.fechaVencimiento : null
+    };
+
+    this.itemDespensaService.create(payload, { skipHandleError: true }).subscribe({
+      next: () => {
+        this.isSubmitting = false;
+        this.isCreateModalOpen = false;
+        this.createForm.reset();
+        this.showCreateSuccess();
+        this.list.get();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Mantiene abierto el formulario con los datos ingresados y muestra error controlado
+        this.isSubmitting = false;
+        this.createErrorMessage = true;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private showCreateSuccess(): void {
+    clearTimeout(this.createSuccessTimeout);
+    this.createSuccessMessage = true;
+    this.createSuccessTimeout = setTimeout(() => {
+      this.createSuccessMessage = false;
+      this.cdr.detectChanges();
+    }, 3000);
   }
 
   // --- Edición, consumo y eliminación ---
 
   edit(item: ItemDespensaDto): void {
+    this.isCreateModalOpen = false; // Cierra alta si estaba abierta
     this.selectedItemId = item.id;
 
     this.form.reset({
@@ -150,7 +270,6 @@ export class PantryComponent implements OnInit, OnDestroy {
         this.list.get();
       },
       error: () => {
-        // ABP muestra el mensaje del servidor; el panel queda abierto y el formulario conserva lo ingresado.
         this.isSaving = false;
       }
     });
@@ -179,7 +298,6 @@ export class PantryComponent implements OnInit, OnDestroy {
       });
   }
 
-  // Muestra el mensaje de éxito y lo oculta automáticamente a los 3 segundos.
   private showUpdateSuccess(): void {
     clearTimeout(this.successTimeout);
     this.updateSuccessMessage = true;
@@ -189,7 +307,6 @@ export class PantryComponent implements OnInit, OnDestroy {
     }, 3000);
   }
 
-  // Toma los primeros 10 caracteres (yyyy-MM-dd) sin convertir a UTC, para no correr el día por la zona horaria.
   private toDateInputValue(value?: string | null): string | null {
     return value ? String(value).substring(0, 10) : null;
   }
