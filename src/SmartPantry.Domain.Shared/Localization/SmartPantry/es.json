@@ -62,6 +62,14 @@
     "Pantry:EditAction": "Editar",
     "Pantry:ConsumeAction": "Marcar como consumido",
     "Pantry:DeleteAction": "Eliminar",
-    "Pantry:UpdateSuccess": "Ítem modificado correctamente."
+    "Pantry:UpdateSuccess": "Ítem modificado correctamente.",
+    "Pantry:AddItem": "Agregar Producto a Despensa",
+    "Pantry:SelectProduct": "Seleccionar producto",
+    "Pantry:SelectProductPlaceholder": "-- Elija un producto --",
+    "Pantry:ProductRequired": "Debe seleccionar un producto.",
+    "Pantry:ItemAddedSuccess": "Ítem agregado exitosamente a la despensa.",
+    "Pantry:ItemAddedError": "Ocurrió un error al agregar el ítem a la despensa.",
+    "Producto:LimiteSolicitudes": "Se alcanzó el límite de solicitudes al catálogo de productos. Intentá de nuevo en unos minutos.",
+    "Producto:ServicioNoDisponible": "El catálogo de productos no está disponible en este momento. Intentá más tarde."
   }
 }
