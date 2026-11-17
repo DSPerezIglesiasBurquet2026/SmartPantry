@@ -70,7 +70,7 @@
     "Pantry:ItemAddedSuccess": "Ítem agregado exitosamente a la despensa.",
     "Pantry:ItemAddedError": "Ocurrió un error al agregar el ítem a la despensa.",
     "Producto:LimiteSolicitudes": "Se alcanzó el límite de solicitudes al catálogo de productos. Intentá de nuevo en unos minutos.",
-    "Producto:ServicioNoDisponible": "El catálogo de productos no está disponible en este momento. Intentá más tarde."
+    "Producto:ServicioNoDisponible": "El catálogo de productos no está disponible en este momento. Intentá más tarde.",
     "Pantry:ItemAddedError": "Ocurrió un error al agregar el ítem a la despensa."
   }
 }
