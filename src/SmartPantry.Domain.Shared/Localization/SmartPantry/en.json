@@ -79,6 +79,5 @@
     "Pantry:ItemAddedError": "An error occurred while adding the item to the pantry.",
     "Producto:LimiteSolicitudes": "The product catalog request limit was reached. Please try again in a few minutes.",
     "Producto:ServicioNoDisponible": "The product catalog is currently unavailable. Please try again later."
-    "Pantry:ItemAddedError": "An error occurred while adding the item to the pantry."
   }
 }
