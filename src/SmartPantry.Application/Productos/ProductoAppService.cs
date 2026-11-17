@@ -8,7 +8,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using System.Net;
 using Microsoft.Extensions.Logging;
-
+using System.Linq;
 
 namespace SmartPantry.Productos;
 
@@ -16,6 +16,11 @@ namespace SmartPantry.Productos;
 [Authorize]
 public class ProductoAppService : SmartPantryAppService, IProductoAppService
 {
+    private const string MensajeLimiteSolicitudes =
+        "Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde.";
+    private const string MensajeServicioNoDisponible =
+        "Ocurrió un error al comunicarse con el servicio externo de productos.";
+
     private readonly IRepository<Producto, Guid> _productoRepository;
     private readonly IExternalProductCatalogClient _externalCatalogClient;
     private readonly ILogger<ProductoAppService> _logger;
@@ -48,21 +53,7 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
                 };
             }
 
-            return new ResultadoBusquedaProductoDto
-            {
-                Barcode = externalProduct.Barcode,
-                Nombre = externalProduct.Name,
-                Marca = externalProduct.Brand,
-                ImagenUrl = externalProduct.ImageUrl,
-                Categorias = externalProduct.Categories ?? new List<string>(),
-                Ingredientes = !string.IsNullOrWhiteSpace(externalProduct.Ingredients)
-                    ? new List<string> { externalProduct.Ingredients }
-                    : new List<string>(),
-                Alergenos = externalProduct.Allergens ?? new List<string>(),
-                NutriScore = externalProduct.NutriScore,
-                NovaGroup = externalProduct.NovaGroup,
-                Estado = EstadoBusquedaProducto.Encontrado
-            };
+            return MapearResultado(externalProduct);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
         {
@@ -71,7 +62,7 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
             {
                 Barcode = input.Barcode,
                 Estado = EstadoBusquedaProducto.LimiteSolicitudes,
-                MensajeError = "Se ha alcanzado el límite de solicitudes a Open Food Facts. Intente más tarde."
+                MensajeError = MensajeLimiteSolicitudes
             };
         }
         catch (Exception ex)
@@ -82,8 +73,32 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
             {
                 Barcode = input.Barcode,
                 Estado = EstadoBusquedaProducto.ServicioNoDisponible,
-                MensajeError = "Ocurrió un error al comunicarse con el servicio externo de productos."
+                MensajeError = MensajeServicioNoDisponible
             };
+        }
+    }
+
+    public async Task<PagedResultDto<ResultadoBusquedaProductoDto>> BuscarPorTextoAsync(
+        BuscarProductoPorTextoInputDto input)
+    {
+        try
+        {
+            var externos = await _externalCatalogClient.SearchByTextAsync(
+                input.Texto.Trim(), input.SkipCount, input.MaxResultCount);
+
+            var items = externos.Items.Select(MapearResultado).ToList();
+            return new PagedResultDto<ResultadoBusquedaProductoDto>(externos.TotalCount, items);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
+        {
+            _logger.LogWarning(ex, "Límite de solicitudes de Search-a-licious alcanzado");
+            return ResultadoDeEstado(EstadoBusquedaProducto.LimiteSolicitudes, MensajeLimiteSolicitudes);
+        }
+        catch (Exception ex)
+        {
+            // 5xx, red caída, timeout, JSON inesperado
+            _logger.LogError(ex, "Error buscando productos por texto en Search-a-licious");
+            return ResultadoDeEstado(EstadoBusquedaProducto.ServicioNoDisponible, MensajeServicioNoDisponible);
         }
     }
 
@@ -137,4 +152,28 @@ public class ProductoAppService : SmartPantryAppService, IProductoAppService
         var dtos = _mapper.Map(productos);
         return new PagedResultDto<ProductoDto>(totalCount, dtos);
     }
+
+    private static ResultadoBusquedaProductoDto MapearResultado(ExternalProductDto p) => new()
+    {
+        Barcode = p.Barcode,
+        Nombre = p.Name,
+        Marca = p.Brand,
+        ImagenUrl = p.ImageUrl,
+        Categorias = p.Categories ?? new List<string>(),
+        Ingredientes = !string.IsNullOrWhiteSpace(p.Ingredients)
+            ? new List<string> { p.Ingredients }
+            : new List<string>(),
+        Alergenos = p.Allergens ?? new List<string>(),
+        NutriScore = p.NutriScore,
+        NovaGroup = p.NovaGroup,
+        Estado = EstadoBusquedaProducto.Encontrado
+    };
+
+    // La búsqueda devuelve una página; para informar un estado de error se usa un único ítem con total 0
+    private static PagedResultDto<ResultadoBusquedaProductoDto> ResultadoDeEstado(
+        EstadoBusquedaProducto estado, string mensaje) =>
+        new(0, new List<ResultadoBusquedaProductoDto>
+        {
+            new() { Estado = estado, MensajeError = mensaje }
+        });
 }
