@@ -1,4 +1,4 @@
-import type { ItemDespensaDto, UpdateItemDespensaDto } from './models';
+import type { CreateItemDespensaDto, ItemDespensaDto, UpdateItemDespensaDto } from './models';
 import { RestService, Rest } from '@abp/ng.core';
 import type { PagedAndSortedResultRequestDto, PagedResultDto } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
@@ -9,15 +9,21 @@ import { Injectable, inject } from '@angular/core';
 export class ItemDespensaService {
   private restService = inject(RestService);
   apiName = 'Default';
-  
+
+  create = (input: CreateItemDespensaDto, config?: Partial<Rest.Config>) =>
+    this.restService.request<any, ItemDespensaDto>({
+      method: 'POST',
+      url: '/api/app/item-despensa',
+      body: input,
+    },
+      { apiName: this.apiName, ...config });
 
   delete = (id: string, config?: Partial<Rest.Config>) =>
     this.restService.request<any, void>({
       method: 'DELETE',
       url: `/api/app/item-despensa/${id}`,
     },
-    { apiName: this.apiName,...config });
-  
+      { apiName: this.apiName, ...config });
 
   getList = (input: PagedAndSortedResultRequestDto, config?: Partial<Rest.Config>) =>
     this.restService.request<any, PagedResultDto<ItemDespensaDto>>({
@@ -26,16 +32,14 @@ export class ItemDespensaService {
       url: '/api/app/item-despensa',
       params: { sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
     },
-    { apiName: this.apiName,...config });
-  
+      { apiName: this.apiName, ...config });
 
   marcarComoConsumido = (id: string, config?: Partial<Rest.Config>) =>
     this.restService.request<any, void>({
       method: 'POST',
       url: `/api/app/item-despensa/${id}/marcar-como-consumido`,
     },
-    { apiName: this.apiName,...config });
-  
+      { apiName: this.apiName, ...config });
 
   update = (id: string, input: UpdateItemDespensaDto, config?: Partial<Rest.Config>) =>
     this.restService.request<any, void>({
@@ -43,5 +47,5 @@ export class ItemDespensaService {
       url: `/api/app/item-despensa/${id}`,
       body: input,
     },
-    { apiName: this.apiName,...config });
+      { apiName: this.apiName, ...config });
 }

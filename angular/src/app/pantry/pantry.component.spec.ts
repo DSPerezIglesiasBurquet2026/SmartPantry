@@ -11,6 +11,7 @@ import { NgbPagination } from '@ng-bootstrap/ng-bootstrap';
 import { PantryComponent } from './pantry.component';
 import { ItemDespensaService } from '../proxy/despensa/item-despensa.service';
 import { ItemDespensaDto } from '../proxy/despensa/models';
+import { ProductoService } from '../proxy/productos/producto.service';
 
 // Mock del pipe de localización: devuelve la clave tal cual, sin depender del servidor de textos.
 @Pipe({ name: 'abpLocalization', standalone: true })
@@ -31,7 +32,8 @@ describe('PantryComponent', () => {
 
   // Mocks (vi.fn) para no depender de la red
   let mockListService: Record<'hookToQuery' | 'get', Mock>;
-  let mockItemDespensaService: Record<'getList' | 'update' | 'delete' | 'marcarComoConsumido', Mock>;
+  let mockItemDespensaService: Record<'getList' | 'create' | 'update' | 'delete' | 'marcarComoConsumido', Mock>;
+  let mockProductoService: Record<'getList', Mock>;
   let mockConfirmationService: Record<'warn', Mock>;
 
   // Stream controlado desde los tests: simula la respuesta (o el fallo) del listado
@@ -41,9 +43,21 @@ describe('PantryComponent', () => {
     mockListService = { hookToQuery: vi.fn(), get: vi.fn() };
     mockItemDespensaService = {
       getList: vi.fn(),
+      create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       marcarComoConsumido: vi.fn()
+    };
+    mockProductoService = {
+      getList: vi.fn().mockReturnValue(
+        of({
+          items: [
+            { id: 'prod-1', nombre: 'Arroz', marca: 'Gallo' },
+            { id: 'prod-2', nombre: 'Fideos', marca: 'Matarazzo' }
+          ],
+          totalCount: 2
+        })
+      )
     };
     mockConfirmationService = { warn: vi.fn() };
 
@@ -54,6 +68,7 @@ describe('PantryComponent', () => {
       imports: [PantryComponent],
       providers: [
         { provide: ItemDespensaService, useValue: mockItemDespensaService },
+        { provide: ProductoService, useValue: mockProductoService },
         { provide: ConfirmationService, useValue: mockConfirmationService }
       ]
     })
@@ -220,5 +235,90 @@ describe('PantryComponent', () => {
 
     expect(mockConfirmationService.warn).toHaveBeenCalled();
     expect(mockItemDespensaService.delete).not.toHaveBeenCalled();
+  });
+
+  // --- Alta de Ítem (RF-10) ---
+
+  it('al hacer click en "+ Agregar Producto a Despensa", se abre el formulario de alta', () => {
+    expect(component.isCreateModalOpen).toBe(false);
+
+    const addButton: HTMLButtonElement = fixture.nativeElement.querySelector('#btn-add-pantry-item');
+    addButton.click();
+    fixture.detectChanges();
+
+    expect(component.isCreateModalOpen).toBe(true);
+    expect(fixture.nativeElement.querySelector('#create-pantry-panel')).toBeTruthy();
+  });
+
+  it('con cantidad negativa o fecha inválida, el formulario de alta es inválido y no invoca al servicio', () => {
+    component.openCreateModal();
+    component.createForm.patchValue({
+      productoId: 'prod-1',
+      cantidad: -3,
+      unidad: 'kg',
+      fechaVencimiento: '2026-02-30' // Fecha inexistente
+    });
+
+    expect(component.createForm.invalid).toBe(true);
+    expect(component.createForm.get('cantidad')?.hasError('min')).toBe(true);
+    expect(component.createForm.get('fechaVencimiento')?.hasError('invalidDate')).toBe(true);
+
+    component.saveNewItem();
+
+    expect(mockItemDespensaService.create).not.toHaveBeenCalled();
+  });
+
+  it('con datos válidos, llama a itemDespensaService.create, resetea el formulario y recarga el listado', () => {
+    mockItemDespensaService.create.mockReturnValue(of({ id: '99', productoId: 'prod-1' }));
+    component.openCreateModal();
+    component.createForm.patchValue({
+      productoId: 'prod-1',
+      cantidad: 2,
+      unidad: 'paquetes',
+      fechaVencimiento: '2026-12-15'
+    });
+    mockListService.get.mockClear();
+
+    component.saveNewItem();
+
+    expect(mockItemDespensaService.create).toHaveBeenCalledWith(
+      {
+        productoId: 'prod-1',
+        cantidad: 2,
+        unidad: 'paquetes',
+        fechaVencimiento: '2026-12-15'
+      },
+      { skipHandleError: true }
+    );
+    expect(component.isCreateModalOpen).toBe(false);
+    expect(component.isSubmitting).toBe(false);
+    expect(component.createSuccessMessage).toBe(true);
+    expect(component.createForm.value.productoId).toBeNull();
+    expect(mockListService.get).toHaveBeenCalled();
+  });
+
+  it('si el servicio devuelve error al crear, el panel se mantiene visible conservando los valores ingresados', () => {
+    mockItemDespensaService.create.mockReturnValue(
+      throwError(() => new Error('Error al crear ítem'))
+    );
+    component.openCreateModal();
+    component.createForm.patchValue({
+      productoId: 'prod-2',
+      cantidad: 4,
+      unidad: 'cajas',
+      fechaVencimiento: '2026-11-30'
+    });
+
+    component.saveNewItem();
+
+    expect(component.isCreateModalOpen).toBe(true);
+    expect(component.isSubmitting).toBe(false);
+    expect(component.createErrorMessage).toBe(true);
+    expect(component.createForm.value).toEqual({
+      productoId: 'prod-2',
+      cantidad: 4,
+      unidad: 'cajas',
+      fechaVencimiento: '2026-11-30'
+    });
   });
 });
