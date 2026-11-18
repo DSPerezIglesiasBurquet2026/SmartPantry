@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
+using Microsoft.Extensions.Configuration;
 
 namespace SmartPantry.ClientesExternos;
 
@@ -21,7 +22,7 @@ public class OpenFoodFactsProductCatalogClient_Tests
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         });
         var http = new HttpClient(handler) { BaseAddress = BaseUrl };
-        return (new OpenFoodFactsProductCatalogClient(http), handler);
+        return (new OpenFoodFactsProductCatalogClient(http, new ConfigurationBuilder().Build()), handler);
     }
 
     // ---------- Ruta consultada ----------
@@ -160,4 +161,78 @@ public class OpenFoodFactsProductCatalogClient_Tests
     private const string JsonSinDatos = """
         { "status": 1, "product": { "code": "3017620422003" } }
         """;
+
+
+    // ---------- SearchByTextAsync ----------
+
+    [Fact]
+    public async Task Search_HaceUnPostALaUrlDeBusqueda()
+    {
+        var (cliente, handler) = Crear(HttpStatusCode.OK, """{ "hits": [], "count": 0 }""");
+
+        await cliente.SearchByTextAsync("leche", 0, 10);
+
+        handler.UltimoMetodo.ShouldBe(HttpMethod.Post);
+        handler.UltimaUri!.ToString().ShouldBe("https://search.openfoodfacts.org/search");
+    }
+
+    [Fact]
+    public async Task Search_Http429_LanzaExcepcionDeLimiteDeSolicitudes()
+    {
+        var (cliente, _) = Crear((HttpStatusCode)429);
+
+        var ex = await Should.ThrowAsync<HttpRequestException>(
+            () => cliente.SearchByTextAsync("leche", 0, 10));
+
+        ex.StatusCode.ShouldBe((HttpStatusCode)429);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task Search_ErrorDelProveedor_LanzaExcepcionConElCodigoHttp(HttpStatusCode status)
+    {
+        var (cliente, _) = Crear(status);
+
+        var ex = await Should.ThrowAsync<HttpRequestException>(
+            () => cliente.SearchByTextAsync("leche", 0, 10));
+
+        ex.StatusCode.ShouldBe(status);
+    }
+
+    [Fact]
+    public async Task Search_Http404_DevuelveListaVacia()
+    {
+        var (cliente, _) = Crear(HttpStatusCode.NotFound);
+
+        var resultado = await cliente.SearchByTextAsync("leche", 0, 10);
+
+        resultado.TotalCount.ShouldBe(0);
+        resultado.Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Search_ConHitsDeSearchalicious_MapeaBrandsComoArregloYDescartaNutriScoreUnknown()
+    {
+        // Forma real de la respuesta: brands es un arreglo y nutriscore_grade puede ser "unknown"
+        var json = """
+        { "hits": [
+            { "code": "8411700026139", "product_name": "Leche Puleva", "brands": ["Puleva"],
+              "nutriscore_grade": "c", "nova_group": 1, "allergens_tags": ["en:milk"] },
+            { "code": "8433329018685", "product_name": "Leche semidesnatada", "brands": ["El Corte Inglés"],
+              "nutriscore_grade": "unknown" } ],
+          "count": 10000, "page": 1, "page_size": 2 }
+        """;
+        var (cliente, _) = Crear(HttpStatusCode.OK, json);
+
+        var resultado = await cliente.SearchByTextAsync("leche", 0, 2);
+
+        resultado.TotalCount.ShouldBe(10000);
+        resultado.Items.Count.ShouldBe(2);
+        resultado.Items[0].Brand.ShouldBe("Puleva");
+        resultado.Items[0].NutriScore.ShouldBe("c");
+        resultado.Items[0].NovaGroup.ShouldBe("1");
+        resultado.Items[1].NutriScore.ShouldBeNull();   // RF-09: "unknown" no se inventa como grado
+        resultado.Items[1].Ingredients.ShouldBeNull();
+    }
 }

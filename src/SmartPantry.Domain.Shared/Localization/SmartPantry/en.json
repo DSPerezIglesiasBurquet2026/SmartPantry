@@ -70,6 +70,14 @@
     "Pantry:EditAction": "Edit",
     "Pantry:ConsumeAction": "Mark as consumed",
     "Pantry:DeleteAction": "Delete",
-    "Pantry:UpdateSuccess": "Item updated successfully."
+    "Pantry:UpdateSuccess": "Item updated successfully.",
+    "Pantry:AddItem": "Add Product to Pantry",
+    "Pantry:SelectProduct": "Select product",
+    "Pantry:SelectProductPlaceholder": "-- Choose a product --",
+    "Pantry:ProductRequired": "You must select a product.",
+    "Pantry:ItemAddedSuccess": "Item successfully added to pantry.",
+    "Pantry:ItemAddedError": "An error occurred while adding the item to the pantry.",
+    "Producto:LimiteSolicitudes": "The product catalog request limit was reached. Please try again in a few minutes.",
+    "Producto:ServicioNoDisponible": "The product catalog is currently unavailable. Please try again later."
   }
 }

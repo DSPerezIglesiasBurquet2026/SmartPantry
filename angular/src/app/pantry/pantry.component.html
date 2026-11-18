@@ -1,8 +1,22 @@
 <div class="card">
-  <div class="card-header">
-    <h2 class="card-title">{{ '::Menu:Pantry' | abpLocalization }}</h2>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="card-title m-0">{{ '::Menu:Pantry' | abpLocalization }}</h2>
+    <button id="btn-add-pantry-item"
+            type="button"
+            class="btn btn-primary"
+            (click)="openCreateModal()">
+      <i class="fa fa-plus me-1"></i>
+      {{ '::Pantry:AddItem' | abpLocalization }}
+    </button>
   </div>
+
   <div class="card-body">
+
+    <!-- Mensaje de éxito tras agregar ítem -->
+    <div *ngIf="createSuccessMessage" class="alert alert-success d-flex align-items-center" role="status">
+      <i class="fas fa-check-circle me-2"></i>
+      <span>{{ '::Pantry:ItemAddedSuccess' | abpLocalization }}</span>
+    </div>
 
     <!-- ESTADO 1: Carga -->
     <div *ngIf="isLoading" class="text-center py-5">
@@ -18,7 +32,7 @@
       </button>
     </div>
 
-    <!-- ESTADO 3: Lista vacía (no se muestra mientras la respuesta está pendiente) -->
+    <!-- ESTADO 3: Lista vacía -->
     <div *ngIf="!isLoading && !hasError && items.length === 0" class="text-center py-5">
       <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
       <p class="lead">{{ '::Pantry:Empty' | abpLocalization }}</p>
@@ -39,7 +53,6 @@
           </thead>
           <tbody>
             <tr *ngFor="let item of items">
-              <!-- Los ítems consumidos se conservan como historial, diferenciados visualmente -->
               <td [ngClass]="{'text-decoration-line-through text-muted': item.consumido}">
                 {{ item.productoNombre }}
                 <span *ngIf="item.consumido" class="badge bg-secondary ms-1">
@@ -47,28 +60,24 @@
                 </span>
               </td>
 
-              <!-- RF-09: fecha con formato regional; si falta, texto localizado sin inventar valores -->
               <td>
                 <span *ngIf="item.fechaVencimiento; else noData">
                   {{ item.fechaVencimiento | date:'shortDate' }}
                 </span>
               </td>
 
-              <!-- RF-09: cantidad -->
               <td>
                 <span *ngIf="item.cantidad !== null && item.cantidad !== undefined; else noData">
                   {{ item.cantidad }}
                 </span>
               </td>
 
-              <!-- RF-09: unidad -->
               <td>
                 <span *ngIf="item.unidad; else noData">
                   {{ item.unidad }}
                 </span>
               </td>
 
-              <!-- Acciones -->
               <td class="text-nowrap">
                 <button type="button" class="btn btn-sm btn-primary me-1"
                         [title]="'::Pantry:EditAction' | abpLocalization"
@@ -95,7 +104,7 @@
         <i class="fas fa-check-circle me-1"></i> {{ '::Pantry:UpdateSuccess' | abpLocalization }}
       </div>
 
-      <!-- Paginación: solo cuando hay más ítems que el tamaño de página -->
+      <!-- Paginación -->
       <div class="d-flex justify-content-center mt-3" *ngIf="totalCount > list.maxResultCount">
         <ngb-pagination [collectionSize]="totalCount"
                         [page]="list.page + 1"
@@ -106,11 +115,114 @@
         </ngb-pagination>
       </div>
     </div>
-    <!-- Template reutilizable para RF-09 (sin inventar valores) -->
+
     <ng-template #noData>
       <span class="text-muted fst-italic">{{ '::Pantry:NoData' | abpLocalization }}</span>
     </ng-template>
 
+  </div>
+</div>
+
+<!-- Panel de alta de nuevo ítem (RF-10) -->
+<div *ngIf="isCreateModalOpen" id="create-pantry-panel" class="card mt-4 border-success">
+  <div class="card-header bg-success text-white">
+    <h3 class="card-title m-0">{{ '::Pantry:AddItem' | abpLocalization }}</h3>
+  </div>
+  <div class="card-body">
+
+    <div *ngIf="createErrorMessage" class="alert alert-danger" role="alert">
+      <i class="fas fa-exclamation-triangle me-1"></i>
+      {{ '::Pantry:ItemAddedError' | abpLocalization }}
+    </div>
+
+    <form [formGroup]="createForm" (ngSubmit)="saveNewItem()">
+      <div class="row">
+
+        <!-- Producto -->
+        <div class="col-md-3 mb-3">
+          <label class="form-label" for="create-productoId">
+            {{ '::Pantry:SelectProduct' | abpLocalization }} *
+          </label>
+          <select id="create-productoId" class="form-select" formControlName="productoId">
+            <option [ngValue]="null" disabled>
+              {{ '::Pantry:SelectProductPlaceholder' | abpLocalization }}
+            </option>
+            <option *ngFor="let prod of productos" [value]="prod.id">
+              {{ prod.nombre }} <span *ngIf="prod.marca">({{ prod.marca }})</span>
+            </option>
+          </select>
+          <div *ngIf="createForm.get('productoId')?.invalid && createForm.get('productoId')?.touched"
+               class="text-danger small mt-1">
+            {{ '::Pantry:ProductRequired' | abpLocalization }}
+          </div>
+        </div>
+
+        <!-- Cantidad -->
+        <div class="col-md-3 mb-3">
+          <label class="form-label" for="create-cantidad">
+            {{ '::Pantry:Quantity' | abpLocalization }}
+          </label>
+          <input id="create-cantidad"
+                 type="number"
+                 step="any"
+                 class="form-control"
+                 formControlName="cantidad"
+                 min="0" />
+          <div *ngIf="createForm.get('cantidad')?.hasError('min')"
+               class="text-danger small mt-1">
+            {{ '::Pantry:InvalidQuantity' | abpLocalization }}
+          </div>
+        </div>
+
+        <!-- Unidad -->
+        <div class="col-md-3 mb-3">
+          <label class="form-label" for="create-unidad">
+            {{ '::Pantry:Unit' | abpLocalization }}
+          </label>
+          <input id="create-unidad"
+                 type="text"
+                 class="form-control"
+                 formControlName="unidad" />
+          <div *ngIf="createForm.get('unidad')?.hasError('maxlength')"
+               class="text-danger small mt-1">
+            {{ '::Pantry:InvalidUnit' | abpLocalization }}
+          </div>
+        </div>
+
+        <!-- Fecha de Vencimiento -->
+        <div class="col-md-3 mb-3">
+          <label class="form-label" for="create-fechaVencimiento">
+            {{ '::Pantry:ExpirationDate' | abpLocalization }}
+          </label>
+          <input id="create-fechaVencimiento"
+                 type="date"
+                 class="form-control"
+                 formControlName="fechaVencimiento" />
+          <div *ngIf="createForm.get('fechaVencimiento')?.hasError('invalidDate')"
+               class="text-danger small mt-1">
+            {{ '::Pantry:InvalidDate' | abpLocalization }}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="d-flex justify-content-end mt-3">
+        <button type="button"
+                class="btn btn-secondary me-2"
+                [disabled]="isSubmitting"
+                (click)="cancelCreate()">
+          {{ '::Pantry:Cancel' | abpLocalization }}
+        </button>
+        <button id="btn-save-new-pantry-item"
+                type="submit"
+                class="btn btn-success"
+                [disabled]="createForm.invalid || isSubmitting">
+          <i class="fas fa-spinner fa-spin me-1" *ngIf="isSubmitting"></i>
+          <i class="fas fa-save me-1" *ngIf="!isSubmitting"></i>
+          {{ isSubmitting ? ('::Pantry:Saving' | abpLocalization) : ('::Pantry:Save' | abpLocalization) }}
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -153,7 +265,6 @@
         <button type="button" class="btn btn-secondary me-2" (click)="cancelEdit()">
           {{ '::Pantry:Cancel' | abpLocalization }}
         </button>
-        <!-- Deshabilitado si el formulario es inválido o hay una petición en curso -->
         <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">
           <i class="fas fa-save me-1"></i>
           {{ isSaving ? ('::Pantry:Saving' | abpLocalization) : ('::Pantry:Save' | abpLocalization) }}
